@@ -4,25 +4,11 @@ from matplotlib.pylab import *
 
 tau = numpy.pi * 2
 
-# find period of fundamental frequency
-# input: magnitude spectrum (abs(fft()) or power spectrum
-# output: approximate samples per symbol of fundamental frequency
-def find_fundamental(spectrum):
-    ac = numpy.array(abs(scipy.fft(spectrum)))
-    ac[0] = 0
-    ac[1] = 0
-    ac[-1] = 0
-    maxima = scipy.signal.argrelextrema(ac, numpy.greater_equal)[0]
-    i = maxima[matplotlib.pylab.find(ac[maxima] > max(ac)*0.4)[0]]
-    estimate = 1.0*((i-1)*ac[i-1] + i*ac[i] + (i+1)*ac[i+1]) / (ac[i-1] + ac[i] + ac[i+1])
-    return estimate
-
-# find spectral peak closest to guessed frequency
-# input: magnitude spectrum (abs(fft()) or power spectrum, bin number guess
-# output: bin number of peak near guess
-def find_peak(spectrum, guess):
+def find_peak(spectrum):
     maxima = scipy.signal.argrelextrema(spectrum, numpy.greater_equal)[0]
-    return maxima[(abs(maxima - guess)).argmin()]
+    if maxima[0] == 0:
+        maxima = maxima[1:]
+    return maxima[matplotlib.pylab.find(spectrum[maxima] > max(spectrum[2:-1])*0.8)[0]]
 
 # whole packet clock recovery
 # input: real valued NRZ-like waveform (array, tuple, or list)
@@ -35,15 +21,10 @@ def wpcr(a):
     d=numpy.diff(a)**2
     if len(matplotlib.pylab.find(d > 0)) < 2:
         return []
-    f = scipy.fft(d, 4*len(a))
-    f[0] = 0
-    # avoid locking onto a harmonic by looking for the fundamental clock frequency
-    fundamental_sps = find_fundamental(abs(f))
-    # fundamental_sps could be supplied by user instead of by find_fundamental
-    p = find_peak(abs(f), len(f)/fundamental_sps)
+    f = scipy.fft(blackman(len(d))*d, len(a))
+    p = find_peak(abs(f))
     cycles_per_sample = (p*1.0)/len(f)
     clock_phase = 0.5 + numpy.angle(f[p])/(tau)
-    print "approximate fundamental samples per symbol: %f" % (fundamental_sps)
     print "peak frequency index: %d / %d" % (p, len(f))
     print "samples per symbol: %f" % (1.0/cycles_per_sample)
     print "clock cycles per sample: %f" % (cycles_per_sample)
