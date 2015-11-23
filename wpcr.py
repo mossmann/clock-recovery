@@ -4,16 +4,22 @@ from matplotlib.pylab import *
 
 tau = numpy.pi * 2
 
-def find_peak(spectrum):
+# determine the clock frequency
+# input: magnitude spectrum of clock signal
+# output: FFT bin number of clock frequency
+def find_clock_frequency(spectrum):
     maxima = scipy.signal.argrelextrema(spectrum, numpy.greater_equal)[0]
-    if maxima[0] == 0:
+    while maxima[0] < 2:
         maxima = maxima[1:]
-    return maxima[matplotlib.pylab.find(spectrum[maxima] > max(spectrum[2:-1])*0.8)[0]]
+    if maxima.any():
+        return maxima[matplotlib.pylab.find(spectrum[maxima] > max(spectrum[2:-1])*0.8)[0]]
+    else:
+        return 0
 
 # whole packet clock recovery
 # input: real valued NRZ-like waveform (array, tuple, or list)
 #        must have at least 2 samples per symbol
-#        must have at least 3 symbols
+#        must have at least 2 symbol transitions
 # output: list of symbols
 def wpcr(a):
     if len(a) < 4:
@@ -22,7 +28,9 @@ def wpcr(a):
     if len(matplotlib.pylab.find(d > 0)) < 2:
         return []
     f = scipy.fft(blackman(len(d))*d, len(a))
-    p = find_peak(abs(f))
+    p = find_clock_frequency(abs(f))
+    if p == 0:
+        return []
     cycles_per_sample = (p*1.0)/len(f)
     clock_phase = 0.5 + numpy.angle(f[p])/(tau)
     print "peak frequency index: %d / %d" % (p, len(f))
