@@ -27,7 +27,7 @@ def wpcr(a):
     d=numpy.diff(a)**2
     if len(matplotlib.pylab.find(d > 0)) < 2:
         return []
-    f = scipy.fft(blackman(len(d))*d, len(a))
+    f = scipy.fft(d, 3*len(a))
     p = find_clock_frequency(abs(f))
     if p == 0:
         return []
