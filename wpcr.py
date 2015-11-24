@@ -5,11 +5,11 @@ from matplotlib.pylab import *
 tau = numpy.pi * 2
 
 # determine the clock frequency
-# input: magnitude spectrum of clock signal
+# input: magnitude spectrum of clock signal (numpy array)
 # output: FFT bin number of clock frequency
 def find_clock_frequency(spectrum):
     maxima = scipy.signal.argrelextrema(spectrum, numpy.greater_equal)[0]
-    while maxima[0] < 2:
+    while maxima.any() and maxima[0] < 2:
         maxima = maxima[1:]
     if maxima.any():
         return maxima[matplotlib.pylab.find(spectrum[maxima] > max(spectrum[2:-1])*0.8)[0]]
