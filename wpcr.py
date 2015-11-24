@@ -11,10 +11,11 @@ def find_clock_frequency(spectrum):
     # throw out negative frequencies
     spectrum = spectrum[:(len(spectrum)+2)/2]
     maxima = scipy.signal.argrelextrema(spectrum, numpy.greater_equal, mode='clip')[0]
-    while maxima.any() and maxima[0] < 2:
+    # overlook maxima resulting in one or fewer total symbols
+    while maxima.any() and maxima[0] < 4:
         maxima = maxima[1:]
     if maxima.any():
-        return maxima[matplotlib.pylab.find(spectrum[maxima] >= max(spectrum[2:-1])*0.8)[0]]
+        return maxima[matplotlib.pylab.find(spectrum[maxima] > max(spectrum[4:])*0.8)[0]]
     else:
         return 0
 
