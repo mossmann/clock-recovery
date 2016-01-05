@@ -1,8 +1,12 @@
+#!/usr/bin/python
+
 import numpy
 import scipy.signal
 from matplotlib.pylab import *
 
 tau = numpy.pi * 2
+max_samples = 1000000
+debug = False
 
 # determine the clock frequency
 # input: magnitude spectrum of clock signal (numpy array)
@@ -36,11 +40,6 @@ def wpcr(a):
         return []
     cycles_per_sample = (p*1.0)/len(f)
     clock_phase = 0.5 + numpy.angle(f[p])/(tau)
-    print "peak frequency index: %d / %d" % (p, len(f))
-    print "samples per symbol: %f" % (1.0/cycles_per_sample)
-    print "clock cycles per sample: %f" % (cycles_per_sample)
-    print "clock phase in cycles between 1st and 2nd samples: %f" % (clock_phase)
-    print "clock phase in cycles at 1st sample: %f" % (clock_phase - cycles_per_sample/2)
     if clock_phase <= 0.5:
         clock_phase += 1
     symbols = []
@@ -49,5 +48,41 @@ def wpcr(a):
             clock_phase -= 1
             symbols.append(a[i])
         clock_phase += cycles_per_sample
-    print "symbol count: %d" % (len(symbols))
+    if debug:
+        print "peak frequency index: %d / %d" % (p, len(f))
+        print "samples per symbol: %f" % (1.0/cycles_per_sample)
+        print "clock cycles per sample: %f" % (cycles_per_sample)
+        print "clock phase in cycles between 1st and 2nd samples: %f" % (clock_phase)
+        print "clock phase in cycles at 1st sample: %f" % (clock_phase - cycles_per_sample/2)
+        print "symbol count: %d" % (len(symbols))
     return symbols
+
+# convert soft symbols into bits (assuming binary symbols)
+def slice_bits(symbols):
+    bits=[]
+    for element in symbols:
+        if element >= numpy.average(symbols):
+            bits.append(1)
+        else:
+            bits.append(0)
+    return bits
+
+# If called directly from command line, take input file (or stdin) as a stream
+# of floats and print binary symbols found therein.
+if __name__ == '__main__':
+    import sys
+    import struct
+    debug = True
+    if len(sys.argv) > 1:
+        if sys.argv[1] == '-':
+            file = sys.stdin
+        else:
+            file = open(sys.argv[1])
+    else:
+        file = sys.stdin
+    data=file.read(4 * max_samples)
+    samples=struct.unpack('f'*(len(data)/4), data)
+    symbols=wpcr(samples)
+    bits=slice_bits(symbols)
+    print bits
+    file.close()
