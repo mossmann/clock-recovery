@@ -12,16 +12,23 @@ debug = False
 # input: magnitude spectrum of clock signal (numpy array)
 # output: FFT bin number of clock frequency
 def find_clock_frequency(spectrum):
-    # throw out negative frequencies
-    spectrum = spectrum[:(len(spectrum)+2)/2]
-    maxima = scipy.signal.argrelextrema(spectrum, numpy.greater_equal, mode='clip')[0]
-    # overlook maxima resulting in one or fewer total symbols
-    while maxima.any() and maxima[0] < 4:
+    maxima = scipy.signal.argrelextrema(spectrum, numpy.greater_equal)[0]
+    while maxima[0] < 2:
         maxima = maxima[1:]
     if maxima.any():
-        return maxima[matplotlib.pylab.find(spectrum[maxima] > max(spectrum[4:])*0.8)[0]]
+        return maxima[matplotlib.pylab.find(spectrum[maxima] > max(spectrum[2:-1])*0.8)[0]]
     else:
         return 0
+
+def midpoint(a):
+    high = []
+    low = []
+    for i in range(len(a)):
+        if a[i] > mean(a):
+            high.append(a[i])
+        else:
+            low.append(a[i])
+    return (median(high) + median(low)) / 2
 
 # whole packet clock recovery
 # input: real valued NRZ-like waveform (array, tuple, or list)
@@ -31,10 +38,11 @@ def find_clock_frequency(spectrum):
 def wpcr(a):
     if len(a) < 4:
         return []
-    d=numpy.diff(a)**2
+    b = a > midpoint(a)
+    d = numpy.diff(b)**2
     if len(matplotlib.pylab.find(d > 0)) < 2:
         return []
-    f = scipy.fft(d, 3*len(a))
+    f = scipy.fft(d, len(a))
     p = find_clock_frequency(abs(f))
     if p == 0:
         return []
