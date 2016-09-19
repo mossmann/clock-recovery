@@ -66,14 +66,10 @@ def wpcr(a):
 
 # convert soft symbols into bits (assuming binary symbols)
 def slice_bits(symbols):
-    bits=[]
     symbols_average = numpy.average(symbols)
-    for element in symbols:
-        if element >= symbols_average:
-            bits.append(1)
-        else:
-            bits.append(0)
-    return bits
+    bits = (symbols >= symbols_average)
+    bits = numpy.array(bits, dtype=numpy.uint8)
+    return list(bits)
 
 def read_from_stdin():
     return numpy.frombuffer(sys.stdin.buffer.read(), dtype=numpy.float32)
