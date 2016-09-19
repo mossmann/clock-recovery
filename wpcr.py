@@ -23,8 +23,9 @@ def find_clock_frequency(spectrum):
 def midpoint(a):
     high = []
     low = []
+    mean_a = mean(a)
     for i in range(len(a)):
-        if a[i] > mean(a):
+        if a[i] > mean_a:
             high.append(a[i])
         else:
             low.append(a[i])
