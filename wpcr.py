@@ -67,8 +67,9 @@ def wpcr(a):
 # convert soft symbols into bits (assuming binary symbols)
 def slice_bits(symbols):
     bits=[]
+    symbols_average = numpy.average(symbols)
     for element in symbols:
-        if element >= numpy.average(symbols):
+        if element >= symbols_average:
             bits.append(1)
         else:
             bits.append(0)
