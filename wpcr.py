@@ -82,11 +82,8 @@ def read_from_stdin():
 if __name__ == '__main__':
     import sys
     debug = True
-    if len(sys.argv) > 1:
-        if sys.argv[1] == '-':
-            samples = read_from_stdin()
-        else:
-            samples = numpy.fromfile(sys.argv[1], dtype=numpy.float32)
+    if len(sys.argv) > 1 and sys.argv[1] != '-':
+        samples = numpy.fromfile(sys.argv[1], dtype=numpy.float32)
     else:
         samples = read_from_stdin()
     symbols=wpcr(samples)
