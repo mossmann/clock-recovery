@@ -79,7 +79,6 @@ def slice_bits(symbols):
 # of floats and print binary symbols found therein.
 if __name__ == '__main__':
     import sys
-    import struct
     debug = True
     if len(sys.argv) > 1:
         if sys.argv[1] == '-':
@@ -88,8 +87,7 @@ if __name__ == '__main__':
             file = open(sys.argv[1])
     else:
         file = sys.stdin
-    data=file.read(4 * max_samples)
-    samples=struct.unpack('f'*(len(data)/4), data)
+    samples = numpy.fromfile(file, dtype=numpy.float32)
     symbols=wpcr(samples)
     bits=slice_bits(symbols)
     print bits
