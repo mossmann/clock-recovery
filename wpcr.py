@@ -2,7 +2,6 @@
 
 import numpy
 import scipy.signal
-from matplotlib.pylab import *
 
 tau = numpy.pi * 2
 max_samples = 1000000
@@ -16,7 +15,9 @@ def find_clock_frequency(spectrum):
     while maxima[0] < 2:
         maxima = maxima[1:]
     if maxima.any():
-        return maxima[matplotlib.pylab.find(spectrum[maxima] > max(spectrum[2:-1])*0.8)[0]]
+        threshold = max(spectrum[2:-1])*0.8
+        indices_above_threshold = numpy.argwhere(spectrum[maxima] > threshold)
+        return maxima[indices_above_threshold[0]]
     else:
         return 0
 
@@ -38,7 +39,7 @@ def wpcr(a):
         return []
     b = a > midpoint(a)
     d = numpy.diff(b)**2
-    if len(matplotlib.pylab.find(d > 0)) < 2:
+    if len(numpy.argwhere(d > 0)) < 2:
         return []
     f = scipy.fft(d, len(a))
     p = find_clock_frequency(abs(f))
