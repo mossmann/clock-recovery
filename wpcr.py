@@ -56,12 +56,12 @@ def wpcr(a):
             symbols.append(a[i])
         clock_phase += cycles_per_sample
     if debug:
-        print "peak frequency index: %d / %d" % (p, len(f))
-        print "samples per symbol: %f" % (1.0/cycles_per_sample)
-        print "clock cycles per sample: %f" % (cycles_per_sample)
-        print "clock phase in cycles between 1st and 2nd samples: %f" % (clock_phase)
-        print "clock phase in cycles at 1st sample: %f" % (clock_phase - cycles_per_sample/2)
-        print "symbol count: %d" % (len(symbols))
+        print("peak frequency index: %d / %d" % (p, len(f)))
+        print("samples per symbol: %f" % (1.0/cycles_per_sample))
+        print("clock cycles per sample: %f" % (cycles_per_sample))
+        print("clock phase in cycles between 1st and 2nd samples: %f" % (clock_phase))
+        print("clock phase in cycles at 1st sample: %f" % (clock_phase - cycles_per_sample/2))
+        print("symbol count: %d" % (len(symbols)))
     return symbols
 
 # convert soft symbols into bits (assuming binary symbols)
@@ -89,5 +89,5 @@ if __name__ == '__main__':
     samples = numpy.fromfile(file, dtype=numpy.float32)
     symbols=wpcr(samples)
     bits=slice_bits(symbols)
-    print bits
+    print(bits)
     file.close()
