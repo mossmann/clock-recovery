@@ -21,15 +21,12 @@ def find_clock_frequency(spectrum):
         return 0
 
 def midpoint(a):
-    high = []
-    low = []
-    mean_a = mean(a)
-    for i in range(len(a)):
-        if a[i] > mean_a:
-            high.append(a[i])
-        else:
-            low.append(a[i])
-    return (median(high) + median(low)) / 2
+    mean_a = numpy.mean(a)
+    mean_a_greater = numpy.ma.masked_greater(a, mean_a)
+    high = numpy.ma.median(mean_a_greater)
+    mean_a_less_or_equal = numpy.ma.masked_array(a, ~mean_a_greater.mask)
+    low = numpy.ma.median(mean_a_less_or_equal)
+    return (high + low) / 2
 
 # whole packet clock recovery
 # input: real valued NRZ-like waveform (array, tuple, or list)
