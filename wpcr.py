@@ -68,8 +68,7 @@ def wpcr(a):
 def slice_bits(symbols):
     symbols_average = numpy.average(symbols)
     bits = (symbols >= symbols_average)
-    bits = numpy.array(bits, dtype=numpy.uint8)
-    return list(bits)
+    return numpy.array(bits, dtype=numpy.uint8)
 
 def read_from_stdin():
     return numpy.frombuffer(sys.stdin.buffer.read(), dtype=numpy.float32)
@@ -85,4 +84,4 @@ if __name__ == '__main__':
         samples = read_from_stdin()
     symbols=wpcr(samples)
     bits=slice_bits(symbols)
-    print(bits)
+    print(list(bits))
