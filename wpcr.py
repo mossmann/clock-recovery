@@ -74,6 +74,9 @@ def slice_bits(symbols):
             bits.append(0)
     return bits
 
+def read_from_stdin():
+    return numpy.frombuffer(sys.stdin.buffer.read(), dtype=numpy.float32)
+
 # If called directly from command line, take input file (or stdin) as a stream
 # of floats and print binary symbols found therein.
 if __name__ == '__main__':
@@ -81,13 +84,11 @@ if __name__ == '__main__':
     debug = True
     if len(sys.argv) > 1:
         if sys.argv[1] == '-':
-            file = sys.stdin
+            samples = read_from_stdin()
         else:
-            file = open(sys.argv[1])
+            samples = numpy.fromfile(sys.argv[1], dtype=numpy.float32)
     else:
-        file = sys.stdin
-    samples = numpy.fromfile(file, dtype=numpy.float32)
+        samples = read_from_stdin()
     symbols=wpcr(samples)
     bits=slice_bits(symbols)
     print(bits)
-    file.close()
