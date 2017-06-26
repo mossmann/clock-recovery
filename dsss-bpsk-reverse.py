@@ -25,63 +25,6 @@ def find_clock_frequency(spectrum):
     else:
         return 0
 
-def midpoint(a):
-    return -20.0
-    high = []
-    low = []
-    average = mean(a)
-    for i in range(len(a)):
-        if a[i] > average:
-            high.append(a[i])
-        else:
-            low.append(a[i])
-    return (median(high) + median(low)) / 2
-
-# whole packet clock recovery
-# input: real valued NRZ-like waveform (array, tuple, or list)
-#        must have at least 2 samples per symbol
-#        must have at least 2 symbol transitions
-# output: list of symbols
-def wpcr(a):
-    if len(a) < 4:
-        return []
-    b = a > midpoint(a)
-    d = (numpy.diff(b*1.0) > 0)
-    if len(matplotlib.pylab.find(d > 0)) < 2:
-        return []
-    f = scipy.fft(d, len(a))
-    p = find_clock_frequency(abs(f))
-    if p == 0:
-        return []
-    cycles_per_sample = (p*1.0)/len(f)
-    clock_phase = 0.75 + numpy.angle(f[p])/(tau)
-    if clock_phase <= 0.5:
-        clock_phase += 1
-    symbols = []
-    for i in range(len(a)):
-        if clock_phase >= 1:
-            clock_phase -= 1
-            symbols.append(a[i])
-        clock_phase += cycles_per_sample
-    #if debug:
-        #print("peak frequency index: %d / %d" % (p, len(f)))
-        #print("samples per symbol: %f" % (1.0/cycles_per_sample))
-        #print("clock cycles per sample: %f" % (cycles_per_sample))
-        #print("clock phase in cycles between 1st and 2nd samples: %f" % (clock_phase))
-        #print("clock phase in cycles at 1st sample: %f" % (clock_phase - cycles_per_sample/2))
-        #print("symbol count: %d" % (len(symbols)))
-    return symbols
-
-# convert soft symbols into bits (assuming binary symbols)
-def slice_bits(symbols):
-    bits=[]
-    for element in symbols:
-        if element >= midpoint(symbols):
-            bits.append(1)
-        else:
-            bits.append(0)
-    return bits
-
 # input: complex valued samples
 # output: signed FFT bin number of detected frequency
 def detect_frequency_offset(samples):
@@ -109,6 +52,27 @@ def detect_chip_rate(samples):
     a = array(samples)
     return find_clock_frequency(abs(scipy.fft(a*a)))
 
+# input: complex valued samples
+#        input signal must be centered at 0 frequency
+# output: subset of samples with optimal sampling time for each chip
+def extract_chip_samples(samples):
+    a = array(samples)
+    f = scipy.fft(a*a)
+    p = find_clock_frequency(abs(f))
+    if 0 == p:
+        return []
+    cycles_per_sample = (p*1.0)/len(f)
+    clock_phase = 0.25 + numpy.angle(f[p])/(tau)
+    if clock_phase <= 0.5:
+        clock_phase += 1
+    chip_samples = []
+    for i in range(len(a)):
+        if clock_phase >= 1:
+            clock_phase -= 1
+            chip_samples.append(a[i])
+        clock_phase += cycles_per_sample
+    return chip_samples
+
 # input: complex valued samples, FFT bin number of chip rate
 #        input signal must be centered at 0 frequency
 # output: number of chips found in repetitive chip sequence
@@ -128,47 +92,40 @@ def detect_chip_sequence_length(samples, chip_rate):
 # input: complex valued samples, FFT bin number of chip rate, length of chip sequence
 #        input signal must be centered at 0 frequency
 # output: list of binary chips
-def determine_chip_sequence(samples, chip_rate, sequence_length):
-    seq_period = int(round(float(len(samples) * sequence_length) / chip_rate))
-    shifted = roll(samples, seq_period)
+def determine_chip_sequence(samples, sequence_length):
+    shifted = roll(samples, sequence_length)
     comparison = real(samples * conj(shifted))
-    filtered = convolve(array((1.0/seq_period,)*seq_period), comparison)
-    minima = scipy.signal.argrelextrema(filtered, numpy.less)[0]
-    while minima[0] < seq_period:
-        minima = minima[1:]
-    threshold = min(filtered[seq_period:])*0.8
-    peaks = []
-    for m in minima:
-        if filtered[m] < threshold:
-            peaks.append(m)
-    sum = zeros(seq_period)
-    for n in matplotlib.pylab.find(filtered[peaks] < min(filtered[seq_period:])*0.8):
-        if len(peaks) > (n + 1):
-            if peaks[n+1] < (peaks[n]+seq_period) and filtered[peaks[n+1]] < filtered[peaks[n]]:
-                continue
-        if n > 0:
-            if peaks[n-1] > (peaks[n]-seq_period) and filtered[peaks[n-1]] < filtered[peaks[n]]:
-                continue
-        sum += comparison[(peaks[n]-seq_period):peaks[n]]
-    symbols=wpcr(sum)
-    transitions=slice_bits(symbols)
-    chips = [1,]
+    filtered = convolve(array((1.0/sequence_length,)*sequence_length), comparison)
+    threshold = min(filtered) / 2.0
+    indices_over_threshold = filtered > threshold
+    filtered[indices_over_threshold] = 0
+    sums = []
+    for i in range(sequence_length):
+        sums.append(numpy.sum(filtered[i::sequence_length]))
+    start = argmin(sums)
+    shifted = roll(samples, 1)
+    comparison = real(samples * conj(shifted))
+    sums = []
+    for i in range(sequence_length):
+        sums.append(numpy.sum(comparison[i::sequence_length]))
+    transitions = roll(sums, sequence_length - start - 1)
+    chips = [0,]
     for t in transitions:
-        if t == 1:
-            chips.append(chips[-1] ^ 1)
-        else:
+        if t > 0:
             chips.append(chips[-1])
+        else:
+            chips.append(chips[-1] ^ 1)
     return chips[1:]
 
 def reverse_dsss(samples):
     offset = detect_frequency_offset(samples)
     corrected = correct_frequency_offset(samples, offset)
-    chip_rate = detect_chip_rate(corrected)
-    sequence_length = detect_chip_sequence_length(corrected, chip_rate)
-    sequence = determine_chip_sequence(corrected, chip_rate, sequence_length)
+    chip_samples = extract_chip_samples(corrected)
+    sequence_length = detect_chip_sequence_length(corrected, len(chip_samples))
+    sequence = determine_chip_sequence(chip_samples, sequence_length)
     if debug:
         print("corrected frequency offset: %d / %d" % (offset, len(samples)))
-        print("detected chip rate: %d / %d" % (chip_rate, len(samples)))
+        print("detected chip rate: %d / %d" % (len(chip_samples), len(samples)))
         print("detected chip sequence length: %d" % (sequence_length))
         print("chip sequence:")
         print(sequence)
