@@ -9,6 +9,8 @@ from matplotlib.pylab import *
 
 tau = numpy.pi * 2
 max_samples = 1000000
+min_num_chips = 5
+max_seq_length = 100000 # in samples
 debug = False
 
 # determine the clock frequency
@@ -84,7 +86,7 @@ def slice_bits(symbols):
 # output: signed FFT bin number of detected frequency
 def detect_frequency_offset(samples):
     a = array(samples)
-    bin = find_clock_frequency(abs(scipy.fft(a*a, len(a))))
+    bin = find_clock_frequency(abs(scipy.fft(a*a)))
     if bin > len(a) // 2:
         bin -= len(a)
     return bin // 2
@@ -94,7 +96,7 @@ def detect_frequency_offset(samples):
 # output: frequency shifted samples
 def correct_frequency_offset(samples, offset):
     a = array(samples)
-    original_fft = scipy.fft(a, len(a))
+    original_fft = scipy.fft(a)
     if offset < 0:
         offset = len(a) + offset
     shifted_fft = append(original_fft[offset:], original_fft[:offset])
@@ -105,7 +107,7 @@ def correct_frequency_offset(samples, offset):
 # output: FFT bin number of chip rate
 def detect_chip_rate(samples):
     a = array(samples)
-    return find_clock_frequency(abs(scipy.fft(a*a, len(a))))
+    return find_clock_frequency(abs(scipy.fft(a*a)))
 
 # input: complex valued samples, FFT bin number of chip rate
 #        input signal must be centered at 0 frequency
@@ -114,10 +116,14 @@ def detect_chip_sequence_length(samples, chip_rate):
     chip_period = int(round(float(len(samples)) / chip_rate))
     shifted = roll(samples, chip_period)
     differential = samples - shifted
-    f = scipy.fft(abs(differential), len(differential))
+    f = scipy.fft(abs(differential))
     power_spectrum = f * conj(f)
-    autocorrelation = scipy.ifft(power_spectrum)
-    return find_clock_frequency(abs(autocorrelation)) // chip_period
+    autocorrelation = abs(scipy.ifft(power_spectrum))
+    fundamentals = []
+    max_num_chips = max_seq_length // chip_period
+    for i in range(chip_period*min_num_chips, max_seq_length):
+        fundamentals.append(sum((autocorrelation[::i])[:len(samples)//max_num_chips]))
+    return (argmax(fundamentals)+chip_period*min_num_chips) // chip_period
 
 # input: complex valued samples, FFT bin number of chip rate, length of chip sequence
 #        input signal must be centered at 0 frequency
