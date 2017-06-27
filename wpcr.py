@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python2
 
 import numpy
 import scipy.signal
@@ -37,7 +37,7 @@ def midpoint(a):
 def wpcr(a):
     if len(a) < 4:
         return []
-    b = a > midpoint(a)
+    b = (a > midpoint(a)) * 1.0
     d = numpy.diff(b)**2
     if len(numpy.argwhere(d > 0)) < 2:
         return []
