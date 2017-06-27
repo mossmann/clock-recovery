@@ -21,7 +21,9 @@ def find_clock_frequency(spectrum):
     while maxima[0] < 3:
         maxima = maxima[1:]
     if maxima.any():
-        return maxima[matplotlib.pylab.find(spectrum[maxima] > max(spectrum[5:-4])*0.8)[0]]
+        threshold = max(spectrum[5:-4])*0.8
+        indices_above_threshold = numpy.argwhere(spectrum[maxima] > threshold)
+        return maxima[indices_above_threshold[0][0]]
     else:
         return 0
 
@@ -130,26 +132,16 @@ def reverse_dsss(samples):
         print("chip sequence:")
         print(sequence)
 
+def read_from_stdin():
+    return numpy.frombuffer(sys.stdin.buffer.read(), dtype=numpy.complex64, count=max_samples)
+
 # If called directly from command line, take input file (or stdin) as a stream
 # of floats and print binary symbols found therein.
 if __name__ == '__main__':
     import sys
-    import struct
     debug = True
-    samples = []
-    if len(sys.argv) > 1:
-        if sys.argv[1] == '-':
-            file = sys.stdin
-        else:
-            file = open(sys.argv[1])
+    if len(sys.argv) > 1 and sys.argv[1] != '-':
+        samples = numpy.fromfile(sys.argv[1], dtype=numpy.complex64, count=max_samples)
     else:
-        file = sys.stdin
-
-    data=file.read(8 * max_samples)
-    floats=struct.unpack('f'*(len(data)/4), data)
-    for i in range(0, len(floats), 2):
-        samples.append(floats[i] + 1j * floats[i+1])
-    s = array(samples)
-
+        samples = read_from_stdin()
     reverse_dsss(samples)
-    file.close()
