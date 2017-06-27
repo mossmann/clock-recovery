@@ -2,7 +2,6 @@
 
 import numpy
 import scipy.signal
-from matplotlib.pylab import *
 
 tau = numpy.pi * 2
 max_samples = 1000000
@@ -16,20 +15,19 @@ def find_clock_frequency(spectrum):
     while maxima[0] < 2:
         maxima = maxima[1:]
     if maxima.any():
-        return maxima[matplotlib.pylab.find(spectrum[maxima] > max(spectrum[2:-1])*0.8)[0]]
+        threshold = max(spectrum[2:-1])*0.8
+        indices_above_threshold = numpy.argwhere(spectrum[maxima] > threshold)
+        return maxima[indices_above_threshold[0]]
     else:
         return 0
 
 def midpoint(a):
-    high = []
-    low = []
-    average = mean(a)
-    for i in range(len(a)):
-        if a[i] > average:
-            high.append(a[i])
-        else:
-            low.append(a[i])
-    return (median(high) + median(low)) / 2
+    mean_a = numpy.mean(a)
+    mean_a_greater = numpy.ma.masked_greater(a, mean_a)
+    high = numpy.ma.median(mean_a_greater)
+    mean_a_less_or_equal = numpy.ma.masked_array(a, ~mean_a_greater.mask)
+    low = numpy.ma.median(mean_a_less_or_equal)
+    return (high + low) / 2
 
 # whole packet clock recovery
 # input: real valued NRZ-like waveform (array, tuple, or list)
@@ -41,7 +39,7 @@ def wpcr(a):
         return []
     b = (a > midpoint(a)) * 1.0
     d = numpy.diff(b)**2
-    if len(matplotlib.pylab.find(d > 0)) < 2:
+    if len(numpy.argwhere(d > 0)) < 2:
         return []
     f = scipy.fft(d, len(a))
     p = find_clock_frequency(abs(f))
@@ -68,30 +66,22 @@ def wpcr(a):
 
 # convert soft symbols into bits (assuming binary symbols)
 def slice_bits(symbols):
-    bits=[]
-    for element in symbols:
-        if element >= numpy.average(symbols):
-            bits.append(1)
-        else:
-            bits.append(0)
-    return bits
+    symbols_average = numpy.average(symbols)
+    bits = (symbols >= symbols_average)
+    return numpy.array(bits, dtype=numpy.uint8)
+
+def read_from_stdin():
+    return numpy.frombuffer(sys.stdin.buffer.read(), dtype=numpy.float32)
 
 # If called directly from command line, take input file (or stdin) as a stream
 # of floats and print binary symbols found therein.
 if __name__ == '__main__':
     import sys
-    import struct
     debug = True
-    if len(sys.argv) > 1:
-        if sys.argv[1] == '-':
-            file = sys.stdin
-        else:
-            file = open(sys.argv[1])
+    if len(sys.argv) > 1 and sys.argv[1] != '-':
+        samples = numpy.fromfile(sys.argv[1], dtype=numpy.float32)
     else:
-        file = sys.stdin
-    data=file.read(4 * max_samples)
-    samples=struct.unpack('f'*(len(data)/4), data)
+        samples = read_from_stdin()
     symbols=wpcr(samples)
     bits=slice_bits(symbols)
-    print(bits)
-    file.close()
+    print(list(bits))
